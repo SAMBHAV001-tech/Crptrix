@@ -38,6 +38,9 @@ python scripts/setup_db.py
 
 This recreates tables and starts live data ingestion.
 
+### Cloud Ingestion
+Data ingestion is automated using GitHub Actions cron workflows, enabling cost-free scheduled execution for public repositories.
+
 Data Sources:
 
 Market data: CoinGecko API
