@@ -27,4 +27,5 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          python scraper/news_sentiment.py
+         python -m scraper.news_sentiment
+
