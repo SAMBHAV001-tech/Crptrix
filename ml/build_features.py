@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, text
 from datetime import timedelta
 import os
 
+# --- DB CONNECTION ---
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
     raise RuntimeError("DATABASE_URL environment variable not set")
@@ -19,29 +20,39 @@ def load_data():
         "SELECT * FROM news_sentiment WHERE symbol='BTC' ORDER BY timestamp",
         engine
     )
-    return prices, sentiment
-
-def build_features():
-    prices, sentiment = load_data()
+    existing_ts = pd.read_sql(
+        "SELECT timestamp FROM features WHERE symbol='BTC'",
+        engine
+    )
 
     prices["timestamp"] = pd.to_datetime(prices["timestamp"])
     sentiment["timestamp"] = pd.to_datetime(sentiment["timestamp"])
+    existing_ts["timestamp"] = pd.to_datetime(existing_ts["timestamp"])
 
+    return prices, sentiment, set(existing_ts["timestamp"])
+
+
+def build_features():
+    prices, sentiment, existing_timestamps = load_data()
     rows = []
 
     for i in range(24, len(prices) - 24):
         now = prices.iloc[i]["timestamp"]
 
+        # 🔒 IMMUTABILITY GUARD
+        if now in existing_timestamps:
+            continue
+
         past = prices.iloc[i-24:i]
         future = prices.iloc[i+24]
 
+        # --- FUTURE RETURN (USED FOR BOTH FEATURE + LABEL) ---
+        future_return_24h = (
+            future["close"] - prices.iloc[i]["close"]
+        ) / prices.iloc[i]["close"]
+
         # --- PRICE FEATURES ---
-        return_24h = (
-            prices.iloc[i]["close"] - prices.iloc[i-24]["close"]
-        ) / prices.iloc[i-24]["close"]
-
         volatility_24h = past["close"].std()
-
         volume_change_24h = (
             prices.iloc[i]["volume"] - prices.iloc[i-24]["volume"]
         ) / max(prices.iloc[i-24]["volume"], 1)
@@ -62,16 +73,12 @@ def build_features():
         )
 
         # --- LABEL ---
-        future_return = (
-            future["close"] - prices.iloc[i]["close"]
-        ) / prices.iloc[i]["close"]
-
-        label = 1 if future_return > 0.01 else 0
+        label = 1 if future_return_24h > 0.01 else 0
 
         rows.append({
             "symbol": "BTC",
             "timestamp": now,
-            "return_24h": return_24h,
+            "return_24h": future_return_24h,
             "volatility_24h": volatility_24h,
             "volume_change_24h": volume_change_24h,
             "avg_news_sentiment_24h": avg_sentiment,
@@ -79,12 +86,17 @@ def build_features():
             "label": label
         })
 
-    df = pd.DataFrame(rows)
-    return df
+    return pd.DataFrame(rows)
+
 
 def save_features(df):
+    if df.empty:
+        print("ℹ️ No new features to insert")
+        return
+
     df.to_sql("features", engine, if_exists="append", index=False)
-    print(f"✅ Inserted {len(df)} feature rows")
+    print(f"✅ Inserted {len(df)} new feature rows")
+
 
 if __name__ == "__main__":
     df = build_features()
