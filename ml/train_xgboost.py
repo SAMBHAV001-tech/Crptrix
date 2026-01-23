@@ -76,7 +76,8 @@ importance = pd.Series(
 print("\n🔍 Feature Importance:")
 print(importance)
 
-os.makedirs("ml/models", exist_ok=True)
-joblib.dump(model, "ml/models/xgb_btc.pkl")
+# Save model for backend inference
+os.makedirs("backend", exist_ok=True)
+joblib.dump(model, "backend/xgboost_model.joblib")
 
-print("✅ Model saved to ml/models/xgb_btc.pkl")
+print("✅ XGBoost model saved to backend/xgboost_model.joblib")
