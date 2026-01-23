@@ -1,5 +1,4 @@
-// API base injected from index.html
-const API_BASE_URL = window.API_BASE_URL;
+const API_BASE_URL = 'https://crptrix-backend.onrender.com';
 
 let currentCurrency = 'USD';
 
@@ -11,9 +10,6 @@ const elements = {
     progressCircle: document.querySelector('.progress-ring-circle')
 };
 
-// ---------------------------
-// Animation helpers
-// ---------------------------
 function animateValue(element, start, end, duration) {
     const range = end - start;
     const increment = range / (duration / 16);
@@ -36,86 +32,44 @@ function setCircularProgress(percentage) {
     elements.progressCircle.style.strokeDashoffset = offset;
 }
 
-// ---------------------------
-// Currency formatting
-// ---------------------------
 function getCurrencySymbol(currency) {
-    const symbols = { USD: '$', INR: '₹', EUR: '€' };
-    return symbols[currency] || '';
+    return { USD: '$', INR: '₹', EUR: '€' }[currency] || '$';
 }
 
 function formatPrice(price, currency) {
-    const symbol = getCurrencySymbol(currency);
-    return `${symbol}${price.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    })}`;
+    return `${getCurrencySymbol(currency)}${price.toLocaleString()}`;
 }
 
-// ---------------------------
-// Risk badge mapping
-// ---------------------------
-function applyRiskStyle(riskText) {
-    elements.riskValue.className = 'risk-value';
-
-    if (riskText === 'Low Risk') {
-        elements.riskValue.classList.add('low');
-    } else if (riskText === 'Medium Risk') {
-        elements.riskValue.classList.add('medium');
-    } else {
-        elements.riskValue.classList.add('high');
-    }
-}
-
-// ---------------------------
-// Fetch prediction
-// ---------------------------
 async function fetchPrediction(currency) {
     try {
-        elements.probabilityValue.textContent = '...';
-        elements.riskValue.textContent = 'Loading...';
-        elements.btcPrice.textContent = 'Loading...';
+        const res = await fetch(`${API_BASE_URL}/predict?currency=${currency}`);
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
 
-        const response = await fetch(
-            `${API_BASE_URL}/predict?currency=${currency}`
+        // --- Probability ---
+        const probability = Math.round(data.growth_probability);
+        animateValue(elements.probabilityValue, 0, probability, 1200);
+        setCircularProgress(probability);
+
+        // --- Risk ---
+        elements.riskValue.textContent = data.risk_level;
+        elements.riskValue.className = 'risk-value';
+
+        // --- Price ---
+        elements.btcPrice.textContent = formatPrice(
+            data.current_price,
+            currency
         );
 
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        updateUI(data);
-
-    } catch (error) {
-        console.error('Prediction fetch failed:', error);
+    } catch (err) {
+        console.error(err);
         elements.probabilityValue.textContent = '--';
-        elements.riskValue.textContent = 'Unavailable';
-        elements.btcPrice.textContent = '--';
+        elements.riskValue.textContent = 'Error';
+        elements.btcPrice.textContent = 'Error';
     }
 }
 
-// ---------------------------
-// Update UI from backend data
-// ---------------------------
-function updateUI(data) {
-    const probability = Math.round(data.growth_probability);
-    const price = data.current_price;
-    const currency = data.currency;
-
-    animateValue(elements.probabilityValue, 0, probability, 1200);
-    setCircularProgress(probability);
-
-    elements.riskValue.textContent = data.risk_level;
-    applyRiskStyle(data.risk_level);
-
-    elements.btcPrice.textContent = formatPrice(price, currency);
-}
-
-// ---------------------------
-// Event listeners
-// ---------------------------
-elements.currencyDropdown.addEventListener('change', (e) => {
+elements.currencyDropdown.addEventListener('change', e => {
     currentCurrency = e.target.value;
     fetchPrediction(currentCurrency);
 });
