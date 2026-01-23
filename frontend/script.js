@@ -5,6 +5,12 @@ const API_BASE_URL = "https://crptrix-backend.onrender.com";
 
 let currentCurrency = "USD";
 
+const FX_RATES = {
+    USD: 1,
+    INR: 91.78,
+    EUR: 0.85
+};
+
 // ===============================
 // DOM ELEMENTS
 // ===============================
@@ -26,7 +32,10 @@ function animateValue(element, start, end, duration) {
 
     const timer = setInterval(() => {
         current += increment;
-        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+        if (
+            (increment > 0 && current >= end) ||
+            (increment < 0 && current <= end)
+        ) {
             current = end;
             clearInterval(timer);
         }
@@ -46,7 +55,7 @@ function getCurrencySymbol(currency) {
 }
 
 function formatPrice(price, currency) {
-    if (price === null) return "Unavailable";
+    if (price === null || isNaN(price)) return "Unavailable";
     return `${getCurrencySymbol(currency)}${price.toLocaleString()}`;
 }
 
@@ -59,22 +68,17 @@ async function fetchPrediction(currency) {
         elements.riskValue.textContent = "Loading...";
         elements.btcPrice.textContent = "Loading...";
 
-        const response = await fetch(
-            `${API_BASE_URL}/predict?currency=${currency}`
-        );
+        const res = await fetch(`${API_BASE_URL}/predict`);
+        if (!res.ok) throw new Error("API error");
 
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
+        const data = await res.json();
 
-        const data = await response.json();
-
-        // --- Probability ---
+        // ----- Probability -----
         const probability = Math.round(data.growth_probability * 100);
         animateValue(elements.probabilityValue, 0, probability, 1200);
         setCircularProgress(probability);
 
-        // --- Risk ---
+        // ----- Risk -----
         elements.riskValue.textContent = data.risk_level;
         elements.riskValue.className = "risk-value";
 
@@ -86,23 +90,21 @@ async function fetchPrediction(currency) {
             elements.riskValue.classList.add("high");
         }
 
-        // --- Price ---
-        if (data.current_price !== null && data.current_price !== undefined) {
-            elements.btcPrice.textContent = formatPrice(
-                data.current_price,
-                currency
-            );
+        // ----- Price conversion -----
+        if (data.price_usd !== null && data.price_usd !== undefined) {
+            const converted =
+                data.price_usd * (FX_RATES[currency] || 1);
+            elements.btcPrice.textContent =
+                formatPrice(converted, currency);
         } else {
-            elements.btcPrice.textContent = 'Unavailable';
+            elements.btcPrice.textContent = "Unavailable";
         }
 
-
-
-    } catch (error) {
-        console.error("Frontend error:", error);
+    } catch (err) {
+        console.error("Frontend error:", err);
         elements.probabilityValue.textContent = "--";
         elements.riskValue.textContent = "Error";
-        elements.btcPrice.textContent = "Error";
+        elements.btcPrice.textContent = "Unavailable";
     }
 }
 

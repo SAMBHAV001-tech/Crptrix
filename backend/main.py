@@ -19,34 +19,32 @@ SUPPORTED_CURRENCIES = ["USD", "INR", "EUR"]
 
 _price_cache = {
     "timestamp": 0,
-    "data": {}
+    "usd": None
 }
 
+def get_btc_price_usd() -> float | None:
+    import time
 
-# ---------------------------
-# Utility: Fetch BTC price
-# ---------------------------
-def get_btc_price(currency: str = "USD") -> float | None:
-    currency = currency.lower()
     now = time.time()
-
-    # Cache valid for 60 seconds
-    if currency in _price_cache["data"] and now - _price_cache["timestamp"] < 60:
-        return _price_cache["data"][currency]
+    if _price_cache["usd"] and now - _price_cache["timestamp"] < 60:
+        return _price_cache["usd"]
 
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price"
-        params = {"ids": "bitcoin", "vs_currencies": currency}
-        r = requests.get(url, params=params, timeout=10)
+        r = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": "bitcoin", "vs_currencies": "usd"},
+            timeout=10
+        )
         r.raise_for_status()
-        price = r.json()["bitcoin"][currency]
+        price = r.json()["bitcoin"]["usd"]
 
-        _price_cache["data"][currency] = price
+        _price_cache["usd"] = price
         _price_cache["timestamp"] = now
         return price
 
     except Exception:
         return None
+
 
 
 
