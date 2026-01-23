@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+import time
 
 from backend.model import predict_probability
 
@@ -16,22 +17,33 @@ app.add_middleware(
 
 SUPPORTED_CURRENCIES = ["USD", "INR", "EUR"]
 
+_price_cache = {
+    "timestamp": 0,
+    "data": {}
+}
+
 
 # ---------------------------
 # Utility: Fetch BTC price
 # ---------------------------
-def get_btc_price(currency: str = "USD"):
+def get_btc_price(currency: str = "USD") -> float | None:
+    currency = currency.lower()
+    now = time.time()
+
+    # Cache valid for 60 seconds
+    if currency in _price_cache["data"] and now - _price_cache["timestamp"] < 60:
+        return _price_cache["data"][currency]
+
     try:
-        currency = currency.lower()
         url = "https://api.coingecko.com/api/v3/simple/price"
         params = {"ids": "bitcoin", "vs_currencies": currency}
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        price = r.json()["bitcoin"][currency]
 
-        response = requests.get(url, params=params, timeout=10)
-
-        if response.status_code != 200:
-            return None   # 👈 graceful fallback
-
-        return response.json()["bitcoin"].get(currency)
+        _price_cache["data"][currency] = price
+        _price_cache["timestamp"] = now
+        return price
 
     except Exception:
         return None

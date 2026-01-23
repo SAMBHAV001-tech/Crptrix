@@ -70,8 +70,7 @@ async function fetchPrediction(currency) {
         const data = await response.json();
 
         // --- Probability ---
-        const probability = Math.round(data.growth_probability * 100) / 100;
-
+        const probability = Math.round(data.growth_probability * 100);
         animateValue(elements.probabilityValue, 0, probability, 1200);
         setCircularProgress(probability);
 
@@ -88,11 +87,15 @@ async function fetchPrediction(currency) {
         }
 
         // --- Price ---
-        if (data.current_price === null) {
-            elements.btcPrice.textContent = 'Unavailable';
+        if (data.current_price !== null && data.current_price !== undefined) {
+            elements.btcPrice.textContent = formatPrice(
+                data.current_price,
+                currency
+            );
         } else {
-            elements.btcPrice.textContent = formatPrice(data.current_price, currency);
+            elements.btcPrice.textContent = 'Unavailable';
         }
+
 
 
     } catch (error) {
