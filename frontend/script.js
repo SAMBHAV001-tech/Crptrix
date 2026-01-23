@@ -1,19 +1,28 @@
-const API_BASE_URL = 'https://crptrix-backend.onrender.com';
+// ===============================
+// CONFIG
+// ===============================
+const API_BASE_URL = "https://crptrix-backend.onrender.com";
 
-let currentCurrency = 'USD';
+let currentCurrency = "USD";
 
+// ===============================
+// DOM ELEMENTS
+// ===============================
 const elements = {
-    currencyDropdown: document.getElementById('currencyDropdown'),
-    probabilityValue: document.getElementById('probabilityValue'),
-    riskValue: document.getElementById('riskValue'),
-    btcPrice: document.getElementById('btcPrice'),
-    progressCircle: document.querySelector('.progress-ring-circle')
+    currencyDropdown: document.getElementById("currencyDropdown"),
+    probabilityValue: document.getElementById("probabilityValue"),
+    riskValue: document.getElementById("riskValue"),
+    btcPrice: document.getElementById("btcPrice"),
+    progressCircle: document.querySelector(".progress-ring-circle")
 };
 
+// ===============================
+// UI HELPERS
+// ===============================
 function animateValue(element, start, end, duration) {
     const range = end - start;
-    const increment = range / (duration / 16);
     let current = start;
+    const increment = range / (duration / 16);
 
     const timer = setInterval(() => {
         current += increment;
@@ -33,18 +42,32 @@ function setCircularProgress(percentage) {
 }
 
 function getCurrencySymbol(currency) {
-    return { USD: '$', INR: '₹', EUR: '€' }[currency] || '$';
+    return { USD: "$", INR: "₹", EUR: "€" }[currency] || "$";
 }
 
 function formatPrice(price, currency) {
+    if (price === null) return "Unavailable";
     return `${getCurrencySymbol(currency)}${price.toLocaleString()}`;
 }
 
+// ===============================
+// CORE API CALL
+// ===============================
 async function fetchPrediction(currency) {
     try {
-        const res = await fetch(`${API_BASE_URL}/predict?currency=${currency}`);
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
+        elements.probabilityValue.textContent = "...";
+        elements.riskValue.textContent = "Loading...";
+        elements.btcPrice.textContent = "Loading...";
+
+        const response = await fetch(
+            `${API_BASE_URL}/predict?currency=${currency}`
+        );
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
 
         // --- Probability ---
         const probability = Math.round(data.growth_probability);
@@ -53,7 +76,15 @@ async function fetchPrediction(currency) {
 
         // --- Risk ---
         elements.riskValue.textContent = data.risk_level;
-        elements.riskValue.className = 'risk-value';
+        elements.riskValue.className = "risk-value";
+
+        if (data.risk_level.includes("Low")) {
+            elements.riskValue.classList.add("low");
+        } else if (data.risk_level.includes("Medium")) {
+            elements.riskValue.classList.add("medium");
+        } else {
+            elements.riskValue.classList.add("high");
+        }
 
         // --- Price ---
         elements.btcPrice.textContent = formatPrice(
@@ -61,19 +92,22 @@ async function fetchPrediction(currency) {
             currency
         );
 
-    } catch (err) {
-        console.error(err);
-        elements.probabilityValue.textContent = '--';
-        elements.riskValue.textContent = 'Error';
-        elements.btcPrice.textContent = 'Error';
+    } catch (error) {
+        console.error("Frontend error:", error);
+        elements.probabilityValue.textContent = "--";
+        elements.riskValue.textContent = "Error";
+        elements.btcPrice.textContent = "Error";
     }
 }
 
-elements.currencyDropdown.addEventListener('change', e => {
+// ===============================
+// EVENTS
+// ===============================
+elements.currencyDropdown.addEventListener("change", (e) => {
     currentCurrency = e.target.value;
     fetchPrediction(currentCurrency);
 });
 
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
     fetchPrediction(currentCurrency);
 });
