@@ -70,7 +70,8 @@ async function fetchPrediction(currency) {
         const data = await response.json();
 
         // --- Probability ---
-        const probability = Math.round(data.growth_probability);
+        const probability = Math.round(data.growth_probability * 100) / 100;
+
         animateValue(elements.probabilityValue, 0, probability, 1200);
         setCircularProgress(probability);
 
@@ -87,10 +88,12 @@ async function fetchPrediction(currency) {
         }
 
         // --- Price ---
-        elements.btcPrice.textContent = formatPrice(
-            data.current_price,
-            currency
-        );
+        if (data.current_price === null) {
+            elements.btcPrice.textContent = 'Unavailable';
+        } else {
+            elements.btcPrice.textContent = formatPrice(data.current_price, currency);
+        }
+
 
     } catch (error) {
         console.error("Frontend error:", error);

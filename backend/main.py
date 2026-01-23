@@ -20,19 +20,22 @@ SUPPORTED_CURRENCIES = ["USD", "INR", "EUR"]
 # ---------------------------
 # Utility: Fetch BTC price
 # ---------------------------
-def get_btc_price(currency: str = "USD") -> float:
-    currency = currency.lower()
+def get_btc_price(currency: str = "USD"):
+    try:
+        currency = currency.lower()
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {"ids": "bitcoin", "vs_currencies": currency}
 
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {
-        "ids": "bitcoin",
-        "vs_currencies": currency
-    }
+        response = requests.get(url, params=params, timeout=10)
 
-    response = requests.get(url, params=params, timeout=10)
-    response.raise_for_status()
+        if response.status_code != 200:
+            return None   # 👈 graceful fallback
 
-    return response.json()["bitcoin"][currency]
+        return response.json()["bitcoin"].get(currency)
+
+    except Exception:
+        return None
+
 
 
 # ---------------------------
