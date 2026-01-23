@@ -68,11 +68,15 @@ def predict(currency: str = Query("USD")):
             }
         )
 
-    # --- ML prediction ---
-    prob = predict_probability()   # value in range [0,1]
+    # --- ML prediction (CORE FEATURE) ---
+    prob = predict_probability()   # always works
 
-    # --- Market price ---
-    btc_price = get_btc_price(currency)
+    # --- CoinGecko price (NON-CRITICAL) ---
+    try:
+        btc_price = get_btc_price(currency)
+    except Exception as e:
+        print("CoinGecko error:", e)
+        btc_price = None   # graceful degradation
 
     return {
         "symbol": "BTC",
@@ -82,3 +86,4 @@ def predict(currency: str = Query("USD")):
         "risk_level": risk_from_probability(prob),
         "disclaimer": "Probability-based insight. Not financial advice."
     }
+
