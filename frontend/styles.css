@@ -1,0 +1,327 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1d3a 100%);
+    color: #e0e6f0;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 60px;
+    padding: 40px 0 20px;
+}
+
+.brand {
+    font-size: 3.5em;
+    font-weight: 700;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+.tagline {
+    font-size: 1.1em;
+    color: #8b95b0;
+    font-weight: 400;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.hero-card {
+    background: rgba(26, 32, 60, 0.6);
+    border-radius: 24px;
+    padding: 50px 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(75, 172, 254, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 50px rgba(75, 172, 254, 0.2);
+}
+
+.card-title {
+    font-size: 1.8em;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #ffffff;
+}
+
+.currency-selector {
+    margin-bottom: 40px;
+}
+
+#currencyDropdown {
+    background: rgba(75, 172, 254, 0.1);
+    border: 2px solid rgba(75, 172, 254, 0.3);
+    color: #4facfe;
+    padding: 12px 24px;
+    font-size: 1em;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+#currencyDropdown:hover {
+    background: rgba(75, 172, 254, 0.2);
+    border-color: rgba(75, 172, 254, 0.5);
+}
+
+#currencyDropdown:focus {
+    outline: none;
+    border-color: #4facfe;
+}
+
+.circular-progress {
+    position: relative;
+    display: inline-block;
+    margin: 30px 0;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: rgba(75, 172, 254, 0.1);
+    stroke-width: 12;
+}
+
+.progress-ring-circle {
+    fill: none;
+    stroke: url(#gradient);
+    stroke-width: 12;
+    stroke-linecap: round;
+    stroke-dasharray: 597;
+    stroke-dashoffset: 597;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.probability-value {
+    font-size: 4em;
+    font-weight: 700;
+    color: #4facfe;
+}
+
+.percentage-sign {
+    font-size: 2em;
+    font-weight: 600;
+    color: #4facfe;
+}
+
+.risk-level {
+    margin-top: 30px;
+    font-size: 1.2em;
+}
+
+.risk-label {
+    color: #8b95b0;
+    margin-right: 8px;
+}
+
+.risk-value {
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: rgba(75, 172, 254, 0.1);
+    color: #4facfe;
+}
+
+.risk-value.low {
+    background: rgba(46, 213, 115, 0.1);
+    color: #2ed573;
+}
+
+.risk-value.medium {
+    background: rgba(255, 184, 0, 0.1);
+    color: #ffb800;
+}
+
+.risk-value.high {
+    background: rgba(255, 71, 87, 0.1);
+    color: #ff4757;
+}
+
+.signal-section,
+.market-snapshot {
+    background: rgba(26, 32, 60, 0.6);
+    border-radius: 20px;
+    padding: 35px 40px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(75, 172, 254, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.signal-section:hover,
+.market-snapshot:hover {
+    transform: translateY(-3px);
+}
+
+.section-title {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: #ffffff;
+}
+
+.signal-list {
+    list-style: none;
+    display: grid;
+    gap: 18px;
+}
+
+.signal-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(75, 172, 254, 0.05);
+    border-radius: 12px;
+    transition: background 0.3s ease;
+}
+
+.signal-item:hover {
+    background: rgba(75, 172, 254, 0.1);
+}
+
+.signal-icon {
+    font-size: 1.5em;
+}
+
+.signal-text {
+    font-size: 1.05em;
+    color: #c5cfe0;
+}
+
+.snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 25px;
+}
+
+.snapshot-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background: rgba(75, 172, 254, 0.05);
+    border-radius: 12px;
+}
+
+.snapshot-label {
+    font-size: 0.95em;
+    color: #8b95b0;
+}
+
+.snapshot-value {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.change-positive {
+    color: #2ed573;
+}
+
+.change-negative {
+    color: #ff4757;
+}
+
+.footer {
+    margin-top: 60px;
+    padding: 30px 0;
+    text-align: center;
+}
+
+.disclaimer {
+    font-size: 0.9em;
+    color: #6b7487;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+    .brand {
+        font-size: 2.5em;
+    }
+
+    .hero-card {
+        padding: 40px 25px;
+    }
+
+    .card-title {
+        font-size: 1.5em;
+    }
+
+    .probability-value {
+        font-size: 3em;
+    }
+
+    .percentage-sign {
+        font-size: 1.5em;
+    }
+
+    .signal-section,
+    .market-snapshot {
+        padding: 25px 20px;
+    }
+
+    .snapshot-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-card,
+.signal-section,
+.market-snapshot {
+    animation: fadeIn 0.6s ease-out;
+}

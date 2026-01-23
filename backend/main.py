@@ -1,14 +1,26 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import requests
 
+from backend.model import predict_probability
+
 app = FastAPI(title="Crptrix API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # public, read-only API
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 SUPPORTED_CURRENCIES = ["USD", "INR", "EUR"]
 
+
+# ---------------------------
+# Utility: Fetch BTC price
+# ---------------------------
 def get_btc_price(currency: str = "USD") -> float:
-    """
-    Fetch current BTC price in selected currency using CoinGecko
-    """
     currency = currency.lower()
 
     url = "https://api.coingecko.com/api/v3/simple/price"
@@ -23,6 +35,21 @@ def get_btc_price(currency: str = "USD") -> float:
     return response.json()["bitcoin"][currency]
 
 
+# ---------------------------
+# Risk interpretation
+# ---------------------------
+def risk_from_probability(p: float) -> str:
+    if p >= 0.75:
+        return "Low Risk"
+    elif p >= 0.55:
+        return "Medium Risk"
+    else:
+        return "High Risk"
+
+
+# ---------------------------
+# Routes
+# ---------------------------
 @app.get("/")
 def health():
     return {"status": "Crptrix backend running"}
@@ -33,22 +60,25 @@ def predict(currency: str = Query("USD")):
     currency = currency.upper()
 
     if currency not in SUPPORTED_CURRENCIES:
-        return {
-            "error": "Unsupported currency",
-            "supported_currencies": SUPPORTED_CURRENCIES
-        }
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Unsupported currency",
+                "supported_currencies": SUPPORTED_CURRENCIES
+            }
+        )
 
-    # Placeholder values until ML model is trained
-    growth_probability = None
-    risk_level = "unknown"
+    # --- ML prediction ---
+    prob = predict_probability()   # value in range [0,1]
 
+    # --- Market price ---
     btc_price = get_btc_price(currency)
 
     return {
         "symbol": "BTC",
         "currency": currency,
         "current_price": btc_price,
-        "growth_probability": growth_probability,
-        "risk_level": risk_level,
-        "note": "Model not trained yet"
+        "growth_probability": round(prob * 100, 2),
+        "risk_level": risk_from_probability(prob),
+        "disclaimer": "Probability-based insight. Not financial advice."
     }

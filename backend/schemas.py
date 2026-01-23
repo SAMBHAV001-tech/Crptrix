@@ -1,5 +1,6 @@
-import os
-from sqlalchemy import create_engine
+from pydantic import BaseModel
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+class PredictionResponse(BaseModel):
+    symbol: str
+    growth_probability: float
+    risk_level: str
