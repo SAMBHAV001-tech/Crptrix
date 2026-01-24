@@ -1,102 +1,72 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
-import time
 
 from backend.model import predict_probability
 
 app = FastAPI(title="Crptrix API")
+
+# -----------------------
+# CORS
+# -----------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # public, read-only API
-    allow_credentials=True,
+    allow_origins=["*"],   # public frontend
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# -----------------------
+# CoinGecko (USD ONLY)
+# -----------------------
+def get_btc_price_usd():
+    url = "https://api.coingecko.com/api/v3/simple/price"
+    params = {
+        "ids": "bitcoin",
+        "vs_currencies": "usd"
+    }
 
-SUPPORTED_CURRENCIES = ["USD", "INR", "EUR"]
+    r = requests.get(url, params=params, timeout=10)
 
-_price_cache = {
-    "timestamp": 0,
-    "usd": None
-}
+    if r.status_code != 200:
+        raise RuntimeError("CoinGecko rate-limited or unavailable")
 
-def get_btc_price_usd() -> float | None:
-    import time
-
-    now = time.time()
-    if _price_cache["usd"] and now - _price_cache["timestamp"] < 60:
-        return _price_cache["usd"]
-
-    try:
-        r = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price",
-            params={"ids": "bitcoin", "vs_currencies": "usd"},
-            timeout=10
-        )
-        r.raise_for_status()
-        price = r.json()["bitcoin"]["usd"]
-
-        _price_cache["usd"] = price
-        _price_cache["timestamp"] = now
-        return price
-
-    except Exception:
-        return None
+    return r.json()["bitcoin"]["usd"]
 
 
-
-
-# ---------------------------
+# -----------------------
 # Risk interpretation
-# ---------------------------
-def risk_from_probability(p: float) -> str:
+# -----------------------
+def risk_from_probability(p):
     if p >= 0.75:
         return "Low Risk"
     elif p >= 0.55:
         return "Medium Risk"
-    else:
-        return "High Risk"
+    return "High Risk"
 
 
-# ---------------------------
+# -----------------------
 # Routes
-# ---------------------------
+# -----------------------
 @app.get("/")
 def health():
     return {"status": "Crptrix backend running"}
 
 
 @app.get("/predict")
-def predict(currency: str = Query("USD")):
-    currency = currency.upper()
+def predict():
+    # --- ML prediction (always works) ---
+    prob = predict_probability()  # e.g. 0.04
 
-    if currency not in SUPPORTED_CURRENCIES:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Unsupported currency",
-                "supported_currencies": SUPPORTED_CURRENCIES
-            }
-        )
-
-    # --- ML prediction (CORE FEATURE) ---
-    prob = predict_probability()   # always works
-
-    # --- CoinGecko price (NON-CRITICAL) ---
+    # --- BTC price in USD (non-critical) ---
     try:
-        btc_price = get_btc_price(currency)
-    except Exception as e:
-        print("CoinGecko error:", e)
-        btc_price = None   # graceful degradation
+        btc_price_usd = get_btc_price_usd()
+    except Exception:
+        btc_price_usd = None  # graceful degradation
 
     return {
         "symbol": "BTC",
-        "currency": currency,
-        "current_price": btc_price,
-        "growth_probability": round(prob * 100, 2),
+        "price_usd": btc_price_usd,
+        "growth_probability": round(prob * 100, 2),  # percentage for UI
         "risk_level": risk_from_probability(prob),
-        "disclaimer": "Probability-based insight. Not financial advice."
     }
-

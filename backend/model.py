@@ -5,7 +5,7 @@ from sqlalchemy import text
 from backend.db import engine
 
 # ---------------------------
-# Model path (Docker-safe)
+# Model path
 # ---------------------------
 MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -13,15 +13,13 @@ MODEL_PATH = os.path.join(
 )
 
 # ---------------------------
-# Lazy-loaded model (safe)
+# Lazy-loaded model
 # ---------------------------
 _model = None
 
 def load_model():
     global _model
     if _model is None:
-        if not os.path.exists(MODEL_PATH):
-            raise RuntimeError(f"Model file not found at {MODEL_PATH}")
         _model = joblib.load(MODEL_PATH)
     return _model
 
@@ -58,7 +56,7 @@ def get_latest_features():
     df = pd.read_sql(query, engine)
 
     if df.empty:
-        raise RuntimeError("No features available for prediction")
+        raise RuntimeError("No features available")
 
     return df[FEATURE_COLUMNS]
 
@@ -67,7 +65,6 @@ def get_latest_features():
 # Public prediction API
 # ---------------------------
 def predict_probability():
-    model = load_model()     # ✅ THIS LINE FIXES EVERYTHING
+    model = load_model()
     X = get_latest_features()
-    prob = model.predict_proba(X)[0][1]
-    return float(prob)
+    return float(model.predict_proba(X)[0][1])
