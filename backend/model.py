@@ -1,6 +1,9 @@
 import os
 import joblib
+import requests
+import numpy as np
 import pandas as pd
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import text
 from backend.db import engine
 
@@ -37,9 +40,97 @@ FEATURE_COLUMNS = [
 
 
 # ---------------------------
-# Fetch latest feature row
+# Live Feature Computation (primary — same on local + cloud)
 # ---------------------------
-def get_latest_features():
+def get_live_features() -> pd.DataFrame:
+    """
+    Computes BTC features in real-time using the CoinGecko API for price data
+    and the DB for the latest available sentiment data.
+
+    This ensures identical feature distributions on both local and cloud,
+    eliminating the database stale-data discrepancy.
+    """
+    # --- 1. Fetch last 2 days of hourly BTC prices from CoinGecko ---
+    url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
+    params = {"vs_currency": "usd", "days": 2, "interval": "hourly"}
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        # Fallback: try Coinbase for current price only
+        raise RuntimeError("CoinGecko API unavailable for live features")
+
+    prices_raw = data.get("prices", [])
+    volumes_raw = data.get("total_volumes", [])
+
+    if len(prices_raw) < 25:
+        raise RuntimeError("Not enough price data from CoinGecko")
+
+    closes = np.array([p[1] for p in prices_raw])
+    volumes = np.array([v[1] for v in volumes_raw])
+
+    # Use the last 25 data points (roughly 24 hours of hourly data)
+    closes_24h = closes[-25:]
+    volumes_24h = volumes[-25:]
+
+    past_close = closes_24h[0]
+    current_close = closes_24h[-1]
+    past_volume = volumes_24h[0]
+    current_volume = volumes_24h[-1]
+
+    return_24h = (current_close - past_close) / past_close if past_close != 0 else 0.0
+    # Coefficient of Variation (std / mean) — unitless, scale-independent
+    # This matches the normalization applied during model training
+    mean_price = float(np.mean(closes_24h))
+    volatility_24h = float(np.std(closes_24h)) / mean_price if mean_price != 0 else 0.0
+    volume_change_24h = (current_volume - past_volume) / max(past_volume, 1)
+
+    # --- 2. Get sentiment from DB (last 24h) ---
+    now_utc = datetime.now(timezone.utc)
+    since = now_utc - timedelta(hours=24)
+
+    try:
+        query = text("""
+            SELECT sentiment_score
+            FROM news_sentiment
+            WHERE symbol = 'BTC'
+              AND timestamp >= :since
+            ORDER BY timestamp ASC
+        """)
+        df_sent = pd.read_sql(query, engine, params={"since": since})
+    except Exception:
+        df_sent = pd.DataFrame(columns=["sentiment_score"])
+
+    if len(df_sent) >= 2:
+        avg_news_sentiment_24h = float(df_sent["sentiment_score"].mean())
+        sentiment_momentum = float(
+            df_sent["sentiment_score"].iloc[-1] - df_sent["sentiment_score"].iloc[0]
+        )
+    elif len(df_sent) == 1:
+        avg_news_sentiment_24h = float(df_sent["sentiment_score"].iloc[0])
+        sentiment_momentum = 0.0
+    else:
+        # Neutral sentiment if no data available
+        avg_news_sentiment_24h = 0.0
+        sentiment_momentum = 0.0
+
+    features = pd.DataFrame([{
+        "return_24h": return_24h,
+        "volatility_24h": volatility_24h,
+        "volume_change_24h": volume_change_24h,
+        "avg_news_sentiment_24h": avg_news_sentiment_24h,
+        "sentiment_momentum": sentiment_momentum
+    }])
+
+    return features[FEATURE_COLUMNS]
+
+
+# ---------------------------
+# Fallback: Fetch latest feature row from DB
+# ---------------------------
+def get_latest_features_from_db():
+    """Fallback: reads pre-computed features from DB (may be stale)."""
     query = text("""
         SELECT
             return_24h,
@@ -56,18 +147,35 @@ def get_latest_features():
     df = pd.read_sql(query, engine)
 
     if df.empty:
-        raise RuntimeError("No features available")
+        raise RuntimeError("No features available in DB")
 
-    # Ensuring column order matches FEATURE_COLUMNS exactly
     return df[FEATURE_COLUMNS]
 
 
 # ---------------------------
 # Public prediction API
 # ---------------------------
-def predict_probability():
+def predict_probability() -> float:
+    """
+    Returns BTC growth probability (0.0 – 1.0).
+
+    Strategy:
+    1. Try computing features live from CoinGecko API (same on all environments)
+    2. Fall back to DB features if API is unavailable
+    """
     model = load_model()
-    X = get_latest_features()
-    # XGBoost trained on array, so we must drop column names
-    return float(model.predict_proba(X.values)[0][1])
- 
+
+    try:
+        X = get_live_features()
+        source = "live"
+    except Exception as e:
+        print(f"[model] Live features failed ({e}), falling back to DB features")
+        X = get_latest_features_from_db()
+        source = "db"
+
+    print(f"[model] Using {source} features: {X.to_dict(orient='records')}")
+
+    # XGBoost trained on array — drop column names
+    prob = float(model.predict_proba(X.values)[0][1])
+    print(f"[model] Predicted probability: {prob:.4f}")
+    return prob

@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 
-from backend.model import predict_probability
+from backend.model import predict_probability, get_live_features, get_latest_features_from_db
 
 app = FastAPI(title="Crptrix API")
 
@@ -69,8 +69,14 @@ def health():
 
 @app.get("/predict")
 def predict():
-    # --- ML prediction (always works) ---
-    prob = predict_probability()  # e.g. 0.04
+    # --- ML prediction (live features from CoinGecko) ---
+    try:
+        prob = predict_probability()
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Prediction unavailable: {str(e)}"
+        )
 
     # --- BTC price in USD (non-critical) ---
     try:
@@ -83,4 +89,23 @@ def predict():
         "price_usd": btc_price_usd,
         "growth_probability": round(prob * 100, 2),  # percentage for UI
         "risk_level": risk_from_probability(prob),
+    }
+
+
+@app.get("/debug")
+def debug():
+    """Developer endpoint — returns raw live features for diagnostics."""
+    try:
+        features = get_live_features()
+        source = "live"
+    except Exception as e:
+        try:
+            features = get_latest_features_from_db()
+            source = "db_fallback"
+        except Exception as e2:
+            raise HTTPException(status_code=503, detail=f"Live: {e} | DB: {e2}")
+
+    return {
+        "source": source,
+        "features": features.to_dict(orient="records")[0]
     }

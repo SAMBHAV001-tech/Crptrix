@@ -56,7 +56,10 @@ def build_features():
         ) / prices.iloc[i]["close"]
 
         # --- PRICE FEATURES ---
-        volatility_24h = past["close"].std()
+        # Coefficient of Variation (std / mean) — unitless, scale-independent
+        # Matches live feature computation in backend/model.py
+        mean_price_24h = past["close"].mean()
+        volatility_24h = past["close"].std() / mean_price_24h if mean_price_24h != 0 else 0.0
 
         volume_change_24h = (
             prices.iloc[i]["volume"] - prices.iloc[i - 24]["volume"]
