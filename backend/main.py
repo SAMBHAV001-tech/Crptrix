@@ -29,12 +29,19 @@ def get_btc_price_usd_cached():
     if _price_cache["value"] and now - _price_cache["timestamp"] < 300:
         return _price_cache["value"]  # reuse for 5 minutes
 
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {"ids": "bitcoin", "vs_currencies": "usd"}
-    r = requests.get(url, params=params, timeout=10)
-    r.raise_for_status()
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {"ids": "bitcoin", "vs_currencies": "usd"}
+        r = requests.get(url, params=params, timeout=5)
+        r.raise_for_status()
+        price = r.json()["bitcoin"]["usd"]
+    except Exception:
+        # Fallback to Binance API which has higher rate limits than CoinGecko
+        fallback_url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+        r = requests.get(fallback_url, timeout=5)
+        r.raise_for_status()
+        price = float(r.json()["price"])
 
-    price = r.json()["bitcoin"]["usd"]
     _price_cache["value"] = price
     _price_cache["timestamp"] = now
     return price
