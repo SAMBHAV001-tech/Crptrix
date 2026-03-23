@@ -1,4 +1,5 @@
 import os
+import time
 import joblib
 import requests
 import numpy as np
@@ -26,6 +27,18 @@ def load_model():
         _model = joblib.load(MODEL_PATH)
     return _model
 
+# ---------------------------
+# Feature cache (15-minute TTL)
+# Prevents second-by-second drift between local & cloud.
+# Both servers refresh at their own 15-min cadence → values
+# stay stable within each window instead of changing every hit.
+# ---------------------------
+_feature_cache = {
+    "data": None,       # cached DataFrame
+    "timestamp": 0.0    # unix time of last fetch
+}
+FEATURE_CACHE_TTL = 900  # 15 minutes
+
 
 # ---------------------------
 # Feature columns (ORDER MATTERS)
@@ -47,9 +60,20 @@ def get_live_features() -> pd.DataFrame:
     Computes BTC features in real-time using the CoinGecko API for price data
     and the DB for the latest available sentiment data.
 
-    This ensures identical feature distributions on both local and cloud,
-    eliminating the database stale-data discrepancy.
+    Results are cached for 15 minutes to keep predictions stable within each
+    time window and avoid second-by-second drift between local & cloud.
     """
+    global _feature_cache
+
+    # --- Return cached result if still fresh ---
+    now_ts = time.time()
+    if _feature_cache["data"] is not None and (now_ts - _feature_cache["timestamp"]) < FEATURE_CACHE_TTL:
+        age = int(now_ts - _feature_cache["timestamp"])
+        print(f"[model] Using cached features (age: {age}s / {FEATURE_CACHE_TTL}s TTL)")
+        return _feature_cache["data"]
+
+    print("[model] Cache miss — fetching fresh features from CoinGecko...")
+
     # --- 1. Fetch last 2 days of hourly BTC prices from CoinGecko ---
     url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
     params = {"vs_currency": "usd", "days": 2, "interval": "hourly"}
@@ -123,7 +147,14 @@ def get_live_features() -> pd.DataFrame:
         "sentiment_momentum": sentiment_momentum
     }])
 
-    return features[FEATURE_COLUMNS]
+    result = features[FEATURE_COLUMNS]
+
+    # --- Store in cache ---
+    _feature_cache["data"] = result
+    _feature_cache["timestamp"] = time.time()
+    print(f"[model] Features cached for {FEATURE_CACHE_TTL // 60} minutes.")
+
+    return result
 
 
 # ---------------------------
