@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crptrix - Crypto Market Intelligence</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="brand">Crptrix</h1>
+            <p class="tagline">Crypto growth probability, not guesses.</p>
+        </header>
+
+        <main class="main-content">
+
+            <section class="hero-card">
+                <h2 class="card-title">BTC Growth Probability</h2>
+
+                <div class="currency-selector">
+                    <select id="currencyDropdown">
+                        <option value="USD">USD</option>
+                        <option value="INR">INR</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+
+                <div class="circular-progress">
+                    <svg class="progress-ring" width="220" height="220">
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#4facfe" />
+                                <stop offset="100%" stop-color="#00f2fe" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="progress-ring-bg" cx="110" cy="110" r="95"></circle>
+                        <circle class="progress-ring-circle" cx="110" cy="110" r="95"></circle>
+                    </svg>
+
+                    <div class="progress-content">
+                        <span class="probability-value" id="probabilityValue">0</span>
+                        <span class="percentage-sign">%</span>
+                    </div>
+                </div>
+
+                <div class="risk-level">
+                    <span class="risk-label">Risk Level:</span>
+                    <span class="risk-value" id="riskValue">Loading...</span>
+                </div>
+            </section>
+
+            <section class="market-snapshot">
+                <h3 class="section-title">Market Snapshot</h3>
+                <div class="snapshot-grid">
+                    <div class="snapshot-item">
+                        <span class="snapshot-label">Current BTC Price</span>
+                        <span class="snapshot-value" id="btcPrice">Loading...</span>
+                    </div>
+                    <div class="snapshot-item">
+                        <span class="snapshot-label">24h Change</span>
+                        <span class="snapshot-value change-positive">Live</span>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="footer">
+            <p class="disclaimer">
+                Crptrix provides probability-based insights using market and sentiment data.
+                This is not financial advice.
+            </p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
