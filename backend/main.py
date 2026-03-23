@@ -36,11 +36,11 @@ def get_btc_price_usd_cached():
         r.raise_for_status()
         price = r.json()["bitcoin"]["usd"]
     except Exception:
-        # Fallback to Binance API which has higher rate limits than CoinGecko
-        fallback_url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+        # Fallback to Coinbase API (Binance blocks Render's US IP addresses)
+        fallback_url = "https://api.coinbase.com/v2/prices/spot?currency=USD"
         r = requests.get(fallback_url, timeout=5)
         r.raise_for_status()
-        price = float(r.json()["price"])
+        price = float(r.json()["data"]["amount"])
 
     _price_cache["value"] = price
     _price_cache["timestamp"] = now
